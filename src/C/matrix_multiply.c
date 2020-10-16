@@ -22,6 +22,7 @@ double matrix_multiply_test(int N, int method)
             A[i][j] = rand();
             B[i][j] = rand();
             C[i][j] = 0.0;
+    
 
     // Start timer and compute matrix product
     start = clock();
@@ -67,9 +68,11 @@ int main(int argc, char* argv[])
         case 2:
             N = atoi(argv[1]);
             break;
+        default:
+            break;
     }
-
-    printf("Timing for %dx%d matrices: %d s.", N, N, matrix_multiply_test(N, method));
+    printf("Starting!");
+    // printf("Timing for %dx%d matrices: %d s.", N, N, matrix_multiply_test(N, method));
 
     return 0;
 }
