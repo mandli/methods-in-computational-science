@@ -11,45 +11,50 @@
 
 int main(int argc, char* argv[])
 {
-
-    int const n = pow(2, 10);
-    int i, thread_ID, num_threads;
-
+    int const n = pow(2, 3);
     double x[n], y[n];
-    double norm, y_norm;
+    double norm, norm_thread, y_norm, y_norm_thread, true_norm;
+    int num_threads, points_per_thread, thread_ID;
+    int start_index, end_index;
 
-    // Handle setting the number of threads
     num_threads = 1;
-    #ifdef _OPENMP
-        num_threads = 8;
-        omp_set_num_threads(num_threads);
-        printf("Using OpenMP with %d threads.", num_threads);
-    #endif
 
-    // Initialize x vector
-    #pragma parallel for
-    for (i = 0; i < n; ++i)
+    points_per_thread = n;
+    printf("Points per thread = %d / %d\n", points_per_thread, n);
+
+    // Initialize x
+    for (int i = 0; i < n; ++i)
         x[i] = (double)i;
 
     norm = 0.0;
     y_norm = 0.0;
 
-    // Fork into num_threads threads
-    #pragma omp parallel private(i)
+    thread_ID = 0;
+    start_index = thread_ID * points_per_thread;
+    end_index = (int)fmin((thread_ID + 1) * points_per_thread, n);
+
+    printf("Thread %d will take i = (%d, %d).\n", thread_ID, start_index, end_index);
+
+    norm_thread = 0.0;
+    for (int i = start_index; i < end_index; ++i)
+        norm_thread += fabs(x[i]);
+
+    norm += norm_thread;
+    printf("norm updated to %f\n", norm);
+
+    y_norm_thread = 0.0;
+    for (int i = start_index; i < end_index; ++i)
     {
-        #pragma omp parallel for reduction(+ : norm)
-        for (i = 0; i < n; ++i)
-            norm += abs(x[i]);
-
-        #pragma omp barrier // Not entirely needed (implicit)
-
-        #pragma omp parallel for reduction(+ : y_norm)
-        for (i = 0; i < n; ++i)
-            y_norm += abs(y[i]);
+        y[i] = x[i] / norm;
+        y_norm_thread += fabs(y[i]);
     }
 
-    printf("Norm of x = %f, n (n+1) / 2 = %f.", norm, n * (n + 1) / 2);
-    printf("Norm of y should be 1, is %f.", y_norm);
+    y_norm += y_norm_thread;
+    printf("norm updated to %f\n", y_norm);
+
+    true_norm = n * (n - 1) / 2;
+    printf("Norm of x = %f, n (n - 1) / 2 = %f.\n", norm, true_norm);
+    printf("Norm of y = %f.\n", y_norm);
 
     return 0;
 }
