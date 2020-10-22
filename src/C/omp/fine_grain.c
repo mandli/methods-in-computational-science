@@ -12,7 +12,7 @@
 int main(int argc, char* argv[])
 {
 
-    int const n = pow(2, 3) + 1;
+    int const n = pow(2, 10) + 1;
     int i, thread_ID, num_threads;
 
     double x[n], y[n];
@@ -34,21 +34,15 @@ int main(int argc, char* argv[])
     norm = 0.0;
     y_norm = 0.0;
 
-    // Fork into num_threads threads
-    #pragma omp parallel private(i)
+    #pragma omp parallel for reduction(+ : norm)
+    for (i = 0; i < n; ++i)
+        norm = norm + fabs(x[i]);
+
+    #pragma omp parallel for reduction(+ : y_norm)
+    for (i = 0; i < n; ++i)
     {
-        #pragma omp parallel for reduction(+ : norm)
-        for (i = 0; i < n; ++i)
-            norm = norm + fabs(x[i]);
-
-        #pragma omp barrier // Not entirely needed (implicit)
-
-        #pragma omp parallel for reduction(+ : y_norm)
-        for (i = 0; i < n; ++i)
-        {
-            y[i] = x[i] / norm;
-            y_norm = y_norm + fabs(y[i]);
-        }
+        y[i] = x[i] / norm;
+        y_norm = y_norm + fabs(y[i]);
     }
 
     true_x_norm = n * (n - 1) / 2;
