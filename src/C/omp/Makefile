@@ -1,57 +1,33 @@
-FC = gfortran
 CC = gcc-10
 LINK = $(CC)
-# GFortran flags
-FFLAGS = -fopenmp
-CFLAGS = -fopenmp
+CFLAGS ?= -fopenmp
+LFLAGS ?= $(CFLAGS)
+SRC = hello_world.c yeval.c fine_grain.c coarse_grain.c
+OBJECTS = $(subst .c,.o,$(SRC))
 
 # Default rules
-%.o : %.f90 ; $(FC) -c $< -o $@ $(FFLAGS)
 %.o : %.c ; $(CC) -c $< -o $@ $(CFLAGS)
 
-# all: 
+all: hello_world yeval fine_grain coarse_grain
 
-# Hello world
-hello_world: hello_world_c hello_world_f
+hello_world: hello_world.o
+	$(LINK) $(LFLAGS) $< -o $@
 
-hello_world_c: hello_world.c
+yeval: yeval.o
+	$(LINK) $(LFLAGS) $< -o $@
 
+fine_grain: fine_grain.o
+	$(LINK) $(LFLAGS) $< -o $@
 
-# Beginning Demo
-mat_mult: mod_rand.o matrix_multiply.o 
-	$(LINK) $(LFLAGS) $^ -o $@
-
-mat_mult_test: mat_mult
-	-echo "Non-threaded Tests:"
-	./mat_mult $(TEST_ITER) 1 1
-	./mat_mult $(TEST_ITER) 2 1
-	./mat_mult $(TEST_ITER) 3 1
-	./mat_mult $(TEST_ITER) 4 1
-	-echo "Threaded Tests:"
-	./mat_mult $(TEST_ITER) 1 4
-	./mat_mult $(TEST_ITER) 2 4
-	./mat_mult $(TEST_ITER) 3 4
-	./mat_mult $(TEST_ITER) 4 4
-
-
+coarse_grain: coarse_grain.o
+	$(LINK) $(LFLAGS) $< -o $@
 
 clean:
-	-rm -f mod_rand.o mod_rand.mod matrix_multiply.o mat_mult
-	-rm -f yeval.o yeval
-	-rm -f demo2.o demo2
-	-rm -f fine_grain.o fine_grain
-	-rm -f coarse_grain.o coarse_grain
-	-rm -f hello_world_omp.o hello_world_omp
-	-rm -f hello_world_mpi.o hello_world_mpi
-	-rm -f compute_pi.o compute_pi
-	-rm -f note_passing.o note_passing
-	-rm -f jacobi_omp1.o jacobi_omp1 jacobi_omp1.txt
-	-rm -f jacobi_omp2.o jacobi_omp2 jacobi_omp2.txt
-	-rm -f jacobi_mpi.o jacobi_mpi jacobi_mpi.txt
+	-rm -f hello_world yeval fine_grain coarse_grain
+	-rm -f $(OBJECTS)
 
 new:
 	$(MAKE) clean
 	$(MAKE) all
-
 
 ### DO NOT remove this line - make depends on it ###
