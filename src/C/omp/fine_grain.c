@@ -34,15 +34,20 @@ int main(int argc, char* argv[])
     norm = 0.0;
     y_norm = 0.0;
 
-    #pragma omp parallel for reduction(+ : norm)
-    for (i = 0; i < n; ++i)
-        norm = norm + fabs(x[i]);
-
-    #pragma omp parallel for reduction(+ : y_norm)
-    for (i = 0; i < n; ++i)
+    #pragma omp parallel
     {
-        y[i] = x[i] / norm;
-        y_norm = y_norm + fabs(y[i]);
+        #pragma omp for reduction(+ : norm)
+        for (i = 0; i < n; ++i)
+            norm = norm + fabs(x[i]);
+
+        #pragma omp barrier  // Not srtictly needed
+
+        #pragma omp for reduction(+ : y_norm)
+        for (i = 0; i < n; ++i)
+        {
+            y[i] = x[i] / norm;
+            y_norm = y_norm + fabs(y[i]);
+        }
     }
 
     true_x_norm = n * (n - 1) / 2;
