@@ -1,14 +1,16 @@
-CC = gcc-10
+CC ?= gcc
 LINK = $(CC)
 CFLAGS ?= -fopenmp
 LFLAGS ?= $(CFLAGS)
+
 SRC = hello_world.c yeval.c fine_grain.c coarse_grain.c
 OBJECTS = $(subst .c,.o,$(SRC))
+EXE = $(subst .c, ,$(SRC))
 
 # Default rules
-%.o : %.c ; $(CC) -c $< -o $@ $(CFLAGS)
+%.o : %.c ; $(CC) $(CFLAGS) -c $< -o $@
 
-all: hello_world yeval fine_grain coarse_grain
+all: $(EXE)
 
 hello_world: hello_world.o
 	$(LINK) $(LFLAGS) $< -o $@
@@ -23,7 +25,7 @@ coarse_grain: coarse_grain.o
 	$(LINK) $(LFLAGS) $< -o $@
 
 clean:
-	-rm -f hello_world yeval fine_grain coarse_grain
+	-rm -f $(EXE)
 	-rm -f $(OBJECTS)
 
 new:
