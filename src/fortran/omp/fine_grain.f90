@@ -17,9 +17,6 @@ program fine_grain
     !$ nthreads = 8
     !$ call omp_set_num_threads(nthreads)
     !$ print "('Using OpenMP with ',i3,' threads')", nthreads
-
-    ! Specify number of threads to use:
-    !$ call omp_set_num_threads(nthreads)
  
     ! initialize x:
     !$omp parallel do 
