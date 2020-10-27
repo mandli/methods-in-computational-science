@@ -1,23 +1,19 @@
 # Matrix Multiply Example and others
 CC ?= gcc
 LINK ?= $(CC)
-
-# GFortran flags
 CFLAGS ?= -O3 -fopenmp -g
-# Intel Flags
-# FFLAGS = -O3 -openmp
+SRC = matrix_multiply.c
+OBJ = $(subst .c,.o,$(SRC))
+EXE = mat_mult
 
-NAME = mat_mult
 TEST_ITER = 1000
 
-# Uncomment the appropriate flags for your platform
-# Linux
-LFLAGS = $(CFLAGS) -lblas
+# Uncomment the appropriate flags for your platform# Linux
+LFLAGS ?= $(CFLAGS) -lblas
 # Mac OS X framework specific, flag above also works for Mac OS X
 # LFLAGS = $(CFLAGS) -framework veclib
 
-# Default fortran rules
-%.o : %.c ; $(CC) -c $< -o $@ $(CFLAGS)
+%.o : %.c ; $(CC) $(CFLAGS) -c $< -o $@ 
 
 # Beginning Demo
 mat_mult: matrix_multiply.o 
@@ -36,10 +32,9 @@ mat_mult_test: mat_mult
 	./mat_mult $(TEST_ITER) 4 4
 
 clean:
-	-rm -f matrix_multiply.o
+	-rm -f matrix_multiply.o mat_mult
 
 new: clean mat_mult
-
 
 # Call subdirectory targets
 
