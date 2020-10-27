@@ -30,7 +30,7 @@ int main(int argc, char* argv[])
         printf("How many points to use?\n");
         scanf("%d", &num_points);
     }
-    // Broadcast the number of poitns
+    // Broadcast the number of points
     MPI_Bcast(&num_points, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
 
     dx = 1.0 / (double)num_points;
