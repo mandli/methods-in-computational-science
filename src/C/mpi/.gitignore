@@ -1,3 +1,7 @@
 hello_world
 note_passing
 compute_pi
+jacobi
+
+# Output from jacobi
+jacobi_*.txt
