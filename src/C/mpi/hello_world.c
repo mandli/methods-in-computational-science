@@ -8,7 +8,6 @@
 
 int main(int argc, char* argv[])
 {
-
     int num_procs, rank;
 
     // Initialize MPI
