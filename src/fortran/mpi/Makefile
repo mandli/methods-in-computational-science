@@ -1,32 +1,36 @@
 # MPI Fortran Demos
-FC = gfortran
-MPI_FC = mpif90
-LINK = $(FC)
-MPI_LINK = $(MPI_FC)
+FC ?= gfortran
+LINK ?= $(FC)
+MPI_FC ?= mpif90
+MPI_LINK ?= $(MPI_FC)
+FFLAGS ?= 
+LFLAGS ?= $(FFLAGS)
 
 SRC = compute_pi.f90 hello_world.f90 jacobi.f90 note_passing.f90
 OBJECTS = $(subst .f90,.o,$(SRC))
+EXE = $(subst .f90, ,$(SRC))
 
 # Default fortran rules
-%.o : %.f90 ; $(FC) -c $< -o $@ $(FFLAGS)
+%.o : %.f90 ; $(FC) $(FFLAGS) -c $< -o $@
 
 .PHONY: all clean new
 
-all: hello_world note_passing compute_pi jacobi
+all: $(EXE)
 
 hello_world: hello_world.o
-	$(MPI_LINK) -o $@ $^
+	$(MPI_LINK) $(LFLAGS) -o $@ $^
 
 note_passing: note_passing.o
-	$(MPI_LINK) -o $@ $^
+	$(MPI_LINK) $(LFLAGS) -o $@ $^
 
 compute_pi: compute_pi.o
-	$(MPI_LINK) -o $@ $^
+	$(MPI_LINK) $(LFLAGS) -o $@ $^
 
 jacobi: jacobi.o
-	$(MPI_LINK) -o $@ $^
+	$(MPI_LINK) $(LFLAGS) -o $@ $^
 
 clean:
+	-rm -f $(EXE)
 	-rm -f $(OBJECTS)
 
 new:
