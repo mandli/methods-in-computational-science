@@ -7,6 +7,9 @@
 
     Note that the stencil has the following layout
         [* 0, 1, 2, ... n-2, n-1, *]
+    Since the local indices into the arrays will always be
+    the same, the [start_index, end_index] will actually refer
+    to the global index space so that x[i] can be computed.
 */
 
 // MPI Library
@@ -29,11 +32,11 @@ int main(int argc, char* argv[])
     double const alpha = 0.0, beta = 3.0, a = 0.0, b = 1.0;
 
     // Numerical parameters
-    int const MAX_ITERATIONS = 10000, PRINT_INTERVAL = 1000;
+    int const MAX_ITERATIONS = 10000, PRINT_INTERVAL = 10;
     int N, num_points, points_per_proc, start_index, end_index;
     double x, dx, tolerance, du_max, du_max_proc;
 
-    bool serial_output = false;
+    bool serial_output = true;
 
     // Work arrays
     double *u, *u_old, *f;
@@ -49,11 +52,12 @@ int main(int argc, char* argv[])
     MPI_Comm_size(MPI_COMM_WORLD, &num_procs);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    // Rank 0 will ask for number of points
+    // Rank 0 will ask for number of points, total points will be num_points + 2
     if (rank == 0)
     {
-        printf("How many points to use?\n");
-        scanf("%d", &num_points);
+        // printf("How many points to use?\n");
+        // scanf("%d", &num_points);
+        num_points = 20;
     }
     // Broadcast the number of points
     MPI_Bcast(&num_points, 1, MPI_INTEGER, 0, MPI_COMM_WORLD);
@@ -62,44 +66,42 @@ int main(int argc, char* argv[])
     dx = (b - a) / ((double)(num_points + 1));
     tolerance = 0.1 * pow(dx, 2);
 
-    // Determine how many points to handle with each proc
-    points_per_proc = (num_points + num_procs - 1) / num_procs;
+    // Determine how many points to handle with each proc - these are the actual
+    // points that are used in the computation, not the ghost points, which 
+    // there are two additional two points of
+    points_per_proc = (double)num_points / (double)num_procs;
     // Only print out the number of points per proc by rank 0
     if (rank == 0)
-        printf("Points per proc = %d\n.", points_per_proc);
+        printf("Points per proc = %d.\n", points_per_proc);
 
     // Determine start and end indices for this rank's points
-    start_index = rank * points_per_proc;
-    end_index = (int)fmin((rank + 1) * points_per_proc, num_points) - 1;
+    // Note that this does not include the halo and boundary points
+    start_index = rank * points_per_proc + 1;
+    end_index = (int)fmin((rank + 1) * points_per_proc, num_points);
 
     // Diagnostic - Print the intervals handled by each rank
     printf("Rank %d - (%d, %d)\n", rank, start_index, end_index);
 
-    // Determine start and end indices for this rank's points for looping.
-    // Actual size of the work arrays include boundary points
-    start_index = rank * points_per_proc + 1;
-    end_index = (int)fmin((rank + 1) * points_per_proc, num_points);
-
-    // Allocate memory for work space
+    // Allocate memory for work space - allocate extra two points for halo and
+    // boundaries
     u = malloc((points_per_proc + 2) * sizeof(double));
     u_old = malloc((points_per_proc + 2) * sizeof(double));
     f = malloc((points_per_proc + 2) * sizeof(double));
 
-    // Initialize arrays
-    for (int i = start_index; i <= end_index; ++i)
+    // Initialize arrays - fill boundaries
+    for (int i = 0; i < points_per_proc + 2; ++i)
     {
-        x = dx * (double) i;
+        x = dx * (double) i + start_index - 1;
         f[i] = exp(x);                     // RHS function
         u[i] = alpha + x * (beta - alpha); // Initial guess
     }
 
     // If rank is keeping track of a boundary we should set that
     if (rank == 0)
-        // Equivalent to u[0]
-        u[start_index - 1] = alpha;
+        u[0] = alpha;
     if (rank == num_procs - 1)
         // Equivalent to u[num_points + 2 - 1]
-        u[end_index + 1] = beta;
+        u[points_per_proc + 1] = beta;
 
     /* Jacobi Iterations */
     while (N < MAX_ITERATIONS)
@@ -108,24 +110,22 @@ int main(int argc, char* argv[])
         for (int i = 0; i < points_per_proc + 2; ++i)
             u_old[i] = u[i];
 
-        /* Fill in boundary data */
-        // Here we are using a tag = 1 for left going communication and tag = 2 for right
-        // Send and receive data to fill in overlaps
+        /* Fill in boundary data 
+           Here we are using tags where 
+             tag = 1 is left going
+             tag = 2 is right going
+        */
+        // Send data to the left for halo data - asychronous
         if (rank > 0)
-        {
-            // Send left endpoint value to process to the left - non-blocking sends
             MPI_Isend(&u_old[0], 1, MPI_DOUBLE_PRECISION, rank - 1, 1, MPI_COMM_WORLD, &request);
-        }
+        // Send data to the right for halo data - asychronous
         if (rank < num_procs - 1)
-        {
-            // Send right endpoint value to process to the right - non-blocking sends
-            MPI_Isend(&u_old[end_index + 1], 1, MPI_DOUBLE_PRECISION, rank + 1, 2, MPI_COMM_WORLD, &request);
-        }
+            MPI_Isend(&u_old[points_per_proc + 1], 1, MPI_DOUBLE_PRECISION, rank + 1, 2, MPI_COMM_WORLD, &request);
 
-        // Accept incoming left and right endpoint values from other tasks - blocking receives
+        // Receive data from the right halo data - BLOCKING
         if (rank < num_procs - 1)
-            // Communication from rank + 1
-            MPI_Recv(&u_old[end_index + 1], 1, MPI_DOUBLE_PRECISION, rank + 1, 1, MPI_COMM_WORLD, &status);
+            MPI_Recv(&u_old[points_per_proc + 1], 1, MPI_DOUBLE_PRECISION, rank + 1, 1, MPI_COMM_WORLD, &status);
+        // Receive data from the left halo data - BLOCKING
         if (rank > 0)
             MPI_Recv(&u_old[0], 1, MPI_DOUBLE_PRECISION, rank - 1, 2, MPI_COMM_WORLD, &status);
 
@@ -136,6 +136,7 @@ int main(int argc, char* argv[])
             u[i] = 0.5 * (u_old[i-1] + u_old[i+1] - pow(dx, 2) * f[i]);
             du_max_proc = fmax(du_max_proc, fabs(u[i] - u_old[i]));
         }
+        /* ------------ */
 
         // Find global maximum change in solution - acts as an implicit barrier
         MPI_Allreduce(&du_max_proc, &du_max, 1, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD);
@@ -150,7 +151,6 @@ int main(int argc, char* argv[])
             break;
         N++;
     }
-
 
     printf("Rank %d finished after %d iterations, du_max = %f.\n",
             rank, N, du_max);
@@ -181,13 +181,16 @@ int main(int argc, char* argv[])
         {
             // Setup file for writing and let rank + 1 to go
             fp = fopen("jacobi_mpi.txt", "w");
-            fprintf(fp, "%f %f", 0.0, u[0]);
+            fprintf(fp, "%f %f\n", 0.0, u[0]);
 
-            for (int i = 1; i < end_index; ++i)
+            for (int i = 1; i < points_per_proc + 1; ++i)
             {
                 x = (double)i * dx;
-                fprintf(fp, "%f %f", x, u[i]);
+                fprintf(fp, "%f %f\n", x, u[i]);
             }
+            // Record right boundary if this is only process
+            if (num_procs == 1)
+                fprintf(fp, "%f %f\n", b, u[points_per_proc + 1]);   
 
             fclose(fp);
 
@@ -200,17 +203,19 @@ int main(int argc, char* argv[])
             // Wait to go for the previous rank, write out, and let the next rank know to go.
             MPI_Recv(MPI_BOTTOM, 0, MPI_INTEGER, rank - 1, 4, MPI_COMM_WORLD, &status);
 
+            printf("Rank %d\n", rank);
             // Begin writing out
-            fp = fopen("jacobi_mpi.txt", "w");
-            for (int i = 1; i < end_index; ++i)
+            fp = fopen("jacobi_mpi.txt", "a");
+            for (int i = 1; i < points_per_proc + 1; ++i)
             {
                 x = (double)i * dx;
-                fprintf(fp, "%f %f", x, u[i]);
+                printf("%d\n", i);
+                fprintf(fp, "%f %f\n", x, u[i]);
             }
 
             // This is the last process, write out boundary
             if (rank == num_procs - 1)
-                fprintf(fp, "%f %f", b, u[end_index + 1]);
+                fprintf(fp, "%f %f\n", b, u[points_per_proc + 1]);
 
             fclose(fp);
 
