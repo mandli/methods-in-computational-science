@@ -23,7 +23,7 @@ def plot_solution(x, U):
 
     fig = plt.figure()
     axes = fig.add_subplot(1, 1, 1)
-    axes.plot(x, U, 'x')
+    axes.plot(x, U, 'ro')
     axes.plot(x_true, u_true, 'k')
 
     axes.set_xlim([0.0, 1.0])
