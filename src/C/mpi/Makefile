@@ -31,6 +31,7 @@ jacobi: jacobi.o
 clean:
 	-rm -f $(EXE)
 	-rm -f $(OBJECTS)
+	-rm -f jacobi*.txt jacobi.png
 
 new:
 	$(MAKE) clean
