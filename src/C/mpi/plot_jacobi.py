@@ -1,19 +1,33 @@
 #!/usr/bin/env python
 
+import sys
 import os
+import glob
+import argparse
 
 import numpy
 import matplotlib.pyplot as plt
 
-def load_data(path, serial=True, num_procs=1):
-    
-    if serial:
-        data = numpy.loadtxt(os.path.join(path, "jacobi_mpi.txt"))
-        x = data[:, 0]
-        U = data[:, 1]
+def load_data(path):
 
-    else:
-        raise NotImplemented("Need to do this...")
+    # Estimate number of processors
+    num_procs = len(glob.glob(os.path.join(path, "jacobi_*.txt")))
+
+    # Load all data
+    data = []
+    num_points = 0
+    for i in range(num_procs):
+        data.append(numpy.loadtxt(os.path.join(path, "jacobi_%s.txt" % i)))
+        num_points += data[-1].shape[0]
+    
+    # Create data arrays
+    x = numpy.empty(num_points)
+    U = numpy.empty(num_points)
+    index = 0
+    for i in range(num_procs):
+        x[index:index + data[i].shape[0]] = data[i][:, 0]
+        U[index:index + data[i].shape[0]] = data[i][:, 1]
+        index += data[i].shape[0]
 
     return x, U
 
@@ -35,12 +49,15 @@ def plot_solution(x, U):
     return fig
 
 def true_solution():
-
     x = numpy.linspace(0.0, 1.0, 1000)
     U = (4.0 - numpy.exp(1.0)) * x - 1.0 + numpy.exp(x)
     return x, U
 
 if __name__ == '__main__':
-    x, U = load_data(os.getcwd())
+    path = os.getcwd()
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    x, U = load_data(path)
     fig = plot_solution(x, U)
     fig.savefig("jacobi.png")
+    plt.show()
