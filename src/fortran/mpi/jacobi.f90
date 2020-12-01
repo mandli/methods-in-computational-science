@@ -158,8 +158,7 @@ program jacobi_mpi
         if (du_max_global < tolerance) exit
     end do
 
-    print '("Task number ",i2," finished after ",i9," iterations, dumax = ",&
-            e16.6)', my_id, num_iterations, du_max_global
+    print '("Task number ",i2," finished after ",i9," iterations, dumax = ",e16.6)', my_id, num_iterations, du_max_global
 
 
     ! Output result:
