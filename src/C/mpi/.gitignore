@@ -2,6 +2,8 @@ hello_world
 note_passing
 compute_pi
 jacobi
+jacobi_2d
+a.out
 
 # Output from jacobi
 jacobi_*.txt
