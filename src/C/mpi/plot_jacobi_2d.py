@@ -1,19 +1,42 @@
 #!/usr/bin/env python
 
 import os
+import sys
+import glob
 
 import numpy
 import matplotlib.pyplot as plt
 
 def load_data(path):
 
-    U = numpy.loadtxt(os.path.join(path, "jacobi_0.txt")).transpose()
-    
-    x = numpy.linspace(0, numpy.pi, U.shape[0])
-    y = numpy.linspace(0, numpy.pi, U.shape[0])
+    # Estimate number of processors
+    num_procs = len(glob.glob(os.path.join(path, "jacobi_*.txt")))
 
+    # Load all data
+    data = []
+    num_points = [0, 0]
+    for i in range(num_procs):
+        data.append(numpy.loadtxt(os.path.join(path, "jacobi_%s.txt" % i)))
+        num_points[0] += data[-1].shape[0]
+        num_points[1] = data[-1].shape[1]
+        print(num_points)
+    
+    # Create data arrays
+    x = numpy.linspace(0, numpy.pi, num_points[1])
+    y = numpy.linspace(0, numpy.pi, num_points[0])
     X, Y = numpy.meshgrid(x,y)
     
+    U = numpy.empty(num_points)
+    print(U.shape)
+    index = 0
+    for i in range(num_procs):
+        print(index, data[i].shape[0])
+        print(U[:, index:index + data[i].shape[0]].shape)
+        print(data[i].transpose().shape)
+        print("---")
+        U[:, index:index + data[i].shape[0]] = data[i].transpose()
+        index += data[i].shape[0]
+
     return X, Y, U
 
 def plot_solution(x, y, u):
@@ -54,6 +77,10 @@ def true_solution(N):
     return U_true
 
 if __name__ == '__main__':
-    X, Y, U = load_data(os.getcwd())
+    path = os.getcwd()
+    if len(sys.argv) > 1:
+        path = sys.argv[1]
+    X, Y, U = load_data(path)
+
     fig = plot_solution(X, Y, U)
     plt.show()
