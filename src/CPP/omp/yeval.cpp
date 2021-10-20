@@ -3,7 +3,6 @@
 
 // Standard io stream and namespace
 #include <iostream>
-#include <string>
 using namespace std;
 
 #include <math.h>
