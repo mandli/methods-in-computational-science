@@ -3,7 +3,7 @@ LINK = $(CXX)
 CFLAGS ?= -fopenmp
 LFLAGS ?= $(CFLAGS)
 
-SRC = hello_world.cpp
+SRC = hello_world.cpp yeval.cpp fine_grain.cpp coarse_grain.cpp
 OBJECTS = $(subst .cpp,.o,$(SRC))
 EXE = $(subst .cpp, ,$(SRC))
 
@@ -13,6 +13,15 @@ EXE = $(subst .cpp, ,$(SRC))
 all: $(EXE)
 
 hello_world: hello_world.o
+	$(LINK) $(LFLAGS) $< -o $@
+
+yeval: yeval.o
+	$(LINK) $(LFLAGS) $< -o $@
+
+fine_grain: fine_grain.o
+	$(LINK) $(LFLAGS) $< -o $@
+
+coarse_grain: coarse_grain.o
 	$(LINK) $(LFLAGS) $< -o $@
 
 clean:
