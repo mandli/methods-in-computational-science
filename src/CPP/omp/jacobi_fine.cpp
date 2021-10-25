@@ -17,7 +17,7 @@ using namespace std;
 // Math library
 #include <math.h>
 
-int main(int argc, char* argv[])
+int main()
 {
     // Problem parameters
     double const a = 0.0, b = 1.0, alpha = 0.0, beta = 3.0;
