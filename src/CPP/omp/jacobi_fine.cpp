@@ -82,7 +82,7 @@ int main()
     }
 
     // Check for failure
-    if (N >= MAX_ITERATIONS)
+    if (k >= MAX_ITERATIONS)
     {
         cout << "*** Jacobi failed to converge!\n";
         cout << "***   Reached du_max = " << du_max << "\n";
