@@ -23,12 +23,13 @@ int main()
     double const a = 0.0, b = 1.0, alpha = 0.0, beta = 3.0;
 
     // Numerical parameters
-    int const MAX_ITERATIONS = pow(2,16), PRINT_INTERVAL = 100;
+    long int const MAX_ITERATIONS = pow(2,32);
+    int const PRINT_INTERVAL = 1000;
 
     // Numerical discretization
     int N, k;
     double dx, tolerance, du_max;
-    N = 100;
+    N = 1000;
     dx = (b - a) / (N + 1);
     tolerance = 0.1 * pow(dx, 2);
 

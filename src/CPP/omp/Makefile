@@ -7,7 +7,9 @@ SRC = hello_world.cpp \
 	yeval.cpp \
 	fine_grain.cpp \
 	coarse_grain.cpp \
-	jacobi_fine.cpp
+	jacobi.cpp \
+	jacobi_fine.cpp \
+	jacobi_coarse.cpp
 
 OBJECTS = $(subst .cpp,.o,$(SRC))
 EXE = $(subst .cpp, ,$(SRC))
@@ -29,7 +31,14 @@ fine_grain: fine_grain.o
 coarse_grain: coarse_grain.o
 	$(LINK) $(LFLAGS) $< -o $@
 
+jacobi: jacobi.o
+	$(LINK) $(LFLAGS) $< -o $@
+
+
 jacobi_fine: jacobi_fine.o
+	$(LINK) $(LFLAGS) $< -o $@
+
+jacobi_coarse: jacobi_coarse.o
 	$(LINK) $(LFLAGS) $< -o $@
 
 clean:

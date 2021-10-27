@@ -2,6 +2,7 @@ coarse_grain
 fine_grain
 hello_world
 yeval
+jacobi
 jacobi_fine
 jacobi_coarse
 jacobi_*.txt
