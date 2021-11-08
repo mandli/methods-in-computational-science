@@ -1,3 +1,6 @@
 *.o
 hello_world
 note_passing
+compute_pi
+jacobi
+jacobi_2d
