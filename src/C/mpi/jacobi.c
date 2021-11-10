@@ -79,20 +79,18 @@ int main(int argc, char* argv[])
     }
 
     /* Jacobi Iterations */
-    N = 0;
     while (N < MAX_ITERATIONS)
     {
         // Copy u into u_old
         for (int i = 0; i < rank_num_points + 2; ++i)
             u_old[i] = u[i];
 
-
-        // Send data to the right (tag = 1)
-        if (rank < num_procs - 1)
-            MPI_Isend(&u_old[rank_num_points], 1, MPI_DOUBLE_PRECISION, rank + 1, 1, MPI_COMM_WORLD, &request);
-        // Send data to the left (tag = 2)
+        // Send data to the left (tag = 1)
         if (rank > 0)
-            MPI_Isend(&u_old[1], 1, MPI_DOUBLE_PRECISION, rank - 1, 2, MPI_COMM_WORLD, &request);
+            MPI_Isend(&u_old[1], 1, MPI_DOUBLE_PRECISION, rank - 1, 1, MPI_COMM_WORLD, &request);
+        // SEnd data to the right (tag = 2)
+        if (rank < num_procs - 1)
+            MPI_Isend(&u_old[rank_num_points], 1, MPI_DOUBLE_PRECISION, rank + 1, 2, MPI_COMM_WORLD, &request);
 
         // Receive data from the right (tag = 1)
         if (rank < num_procs - 1)
