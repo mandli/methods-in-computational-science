@@ -38,8 +38,6 @@ int main(int argc, char* argv[])
     double x, dx, tolerance, du_max, du_max_proc;
 
     // IO
-    FILE *fp;
-    char file_name[20];
     bool serial_output = true;
 
     // Initialize MPI
@@ -129,9 +127,9 @@ int main(int argc, char* argv[])
     {
         if (rank == 0)
         {
-            printf("*** Jacobi failed to converge!\n");
-            printf("***   Reached du_max = %f\n", du_max);
-            printf("***   Tolerance = %f\n", tolerance);
+            cout << "*** Jacobi failed to converge!\n";
+            cout << "***   Reached du_max = " << du_max << "\n";
+            cout << "***   Tolerance = " << tolerance << "\n";
         }
         MPI_Finalize();
         return 1;

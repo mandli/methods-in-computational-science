@@ -14,7 +14,7 @@ EXE = $(subst .c, ,$(SRC))
 
 .PHONY: all clean new
 
-all: hello_world note_passing compute_pi jacobi
+all: hello_world note_passing compute_pi jacobi jacobi_2d
 
 hello_world: hello_world.o
 	$(MPI_LINK) -o $@ $^
@@ -26,6 +26,9 @@ compute_pi: compute_pi.o
 	$(MPI_LINK) -o $@ $^
 
 jacobi: jacobi.o
+	$(MPI_LINK) -o $@ $^
+
+jacobi_2d: jacobi_2d.o
 	$(MPI_LINK) -o $@ $^
 
 clean:
