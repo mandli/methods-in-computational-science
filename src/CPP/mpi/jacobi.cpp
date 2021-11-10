@@ -93,10 +93,10 @@ int main(int argc, char* argv[])
 
         // Receive data from the right (tag = 1)
         if (rank < num_procs - 1)
-            MPI_Recv(&u_old[rank_num_points + 1], 1, MPI_DOUBLE_PRECISION, rank + 1, 1, MPI_COMM_WORLD, &status);
+            MPI_Recv(&u_old[rank_num_points + 1], 1, MPI_DOUBLE_PRECISION, rank + 1, 2, MPI_COMM_WORLD, &status);
         // Receive data from the left (tag = 2)
         if (rank > 0)
-            MPI_Recv(&u_old[0], 1, MPI_DOUBLE_PRECISION, rank - 1, 2, MPI_COMM_WORLD, &status);
+            MPI_Recv(&u_old[0], 1, MPI_DOUBLE_PRECISION, rank - 1, 1, MPI_COMM_WORLD, &status);
 
         /* Apply Jacobi */
         du_max_proc = 0.0;
@@ -171,7 +171,7 @@ int main(int argc, char* argv[])
             MPI_Recv(MPI_BOTTOM, 0, MPI_INTEGER, rank - 1, 4, MPI_COMM_WORLD, &status);
 
             // Begin writing out
-            ofstream fp("jacobi_0.txt");
+            ofstream fp("jacobi_0.txt", ofstream::app);
             for (int i = 1; i < rank_num_points + 1; ++i)
             {
                 x = (double) (i + start_index - 1) * dx  + a;
