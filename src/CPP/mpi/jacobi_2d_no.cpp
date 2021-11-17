@@ -70,11 +70,6 @@ int main()
 
     /* Jacobi Iterations */
     k = 0;
-    du_max = 0.0;
-    for (int i = 1; i < N + 1; ++i)
-        for (int j = 1; j < N + 1; ++j)
-            du_max = fmax(du_max, fabs(u[i][j] - u_old[i][j]));
-    cout << "After " << k << " iterations, du_max = " << du_max << "\n";
     while (k < MAX_ITERATIONS)
     {
         k++;
@@ -117,9 +112,9 @@ int main()
     string file_name = "jacobi_" + to_string(0) + ".txt";
     ofstream fp(file_name);
 
-    for (int i = 0; i < N + 2; ++i)
+    for (int j = 0; j < N + 2; ++j)
     {
-        for (int j = 0; j < N + 2; ++j)
+        for (int i = 0; i < N + 2; ++i)
             fp << u[i][j] << " ";
         fp << "\n";
     }
