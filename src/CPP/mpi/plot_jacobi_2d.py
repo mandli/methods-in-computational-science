@@ -14,30 +14,27 @@ def load_data(path):
 
     # Load all data
     data = []
-    num_points = [0, 0]
+    rank_N = numpy.empty(num_procs, dtype=int)
     for i in range(num_procs):
         data.append(numpy.loadtxt(os.path.join(path, "jacobi_%s.txt" % i)))
-        num_points[0] += data[-1].shape[0]
-        num_points[1] = data[-1].shape[1]
-        print(num_points)
+        N = data[-1].shape[1]
+        rank_N[i] = data[-1].shape[0]
+    
+    print("Grids: N = %s, rank_N = %s" % (N, rank_N))
+    assert(N == rank_N.sum())
     
     # Create data arrays
-    x = numpy.linspace(0, numpy.pi, num_points[0])
-    y = numpy.linspace(0, numpy.pi, num_points[1])
+    x = numpy.linspace(0, numpy.pi, N)
+    y = numpy.linspace(0, numpy.pi, rank_N.sum())
     X, Y = numpy.meshgrid(x,y)
     
-    U = numpy.empty(num_points)
-    print(U.shape)
+    U = numpy.empty((N, rank_N.sum()))
     index = 0
     for i in range(num_procs):
-        print(index, data[i].shape[0])
-        print(U[:, index:index + data[i].shape[0]].shape)
-        print(data[i].shape)
-        print("---")
-        U[:, index:index + data[i].shape[0]] = data[i]
+        U[:, index:index + data[i].shape[0]] = data[i].transpose()
         index += data[i].shape[0]
 
-    return X, Y, U
+    return X, Y, U.transpose()
 
 def plot_solution(x, y, u):
     fig = plt.figure()
