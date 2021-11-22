@@ -28,22 +28,16 @@ int main(int argc, char *argv[])
     double const pi = 3.141592654;
     double const a = 0.0, b = pi;
 
+    // Numerical parameters
+    int const MAX_ITERATIONS = pow(2, 16), PRINT_INTERVAL = 100;
+    int N, k;
+    double x, y, dx, dy, tolerance, du_max;
+
     // MPI Variables
-    int num_procs, rank, tag, rank_num_points, start_index, end_index;
+    int num_procs, rank, tag, rank_N, start_index, end_index;
+    double du_max_proc;
     MPI_Status status;
     MPI_Request request;
-
-    // Numerical parameters
-    int const MAX_ITERATIONS = pow(2, 16), PRINT_INTERVAL = 1000;
-    int N, num_points;
-    double x, y, dx, dy, tolerance, du_max, du_max_proc;
-
-    // Work arrays
-    // double *buffer, **u, **u_old, **f;
-
-    // IO
-    // FILE *fp;
-    // char file_name[20];
 
     // Initialize MPI
     MPI_Init(&argc, &argv);
@@ -59,43 +53,44 @@ int main(int argc, char *argv[])
     }
 
     // Discretization
-    num_points = 20;
-    dx = (pi - 0) / ((double)(num_points + 1));
+    N = 100;
+    dx = (pi - 0) / ((double)(N + 1));
     dy = dx;
     tolerance = 0.1 * pow(dx, 2);
 
     // Organization of local process (rank) data
-    rank_num_points = (num_points + num_procs - 1) / num_procs;
-    start_index = rank * rank_num_points + 1;
-    end_index = fmin((rank + 1) * rank_num_points, num_points);
-    rank_num_points = end_index - start_index + 1;
+    rank_N = (N + num_procs - 1) / num_procs;
+    start_index = rank * rank_N + 1;
+    end_index = fmin((rank + 1) * rank_N, N);
+    rank_N = end_index - start_index + 1;
 
     // Diagnostic - Print the intervals handled by each rank
-    cout << "Rank " << rank << ": " << rank_num_points << " - (" << start_index << ", " << end_index << ")\n";
+    cout << "Rank " << rank << ": " << rank_N << " - (" << start_index << ", " << end_index << ")\n";
 
     // Allocate work arrays
-    double *buffer = new double[rank_num_points + 2];
-    double **u = new double*[rank_num_points + 2];
-    double **u_old = new double*[rank_num_points + 2];
-    double **f = new double*[rank_num_points + 2];
-    for (int i = 0; i < rank_num_points + 2; ++i)
+    double *send_buffer = new double[N];
+    double *recv_buffer = new double[N];
+    double **u = new double*[N + 2];
+    double **u_old = new double*[N + 2];
+    double **f = new double*[N + 2];
+    for (int i = 0; i < N + 2; ++i)
     {
-        u[i] = new double[rank_num_points + 2];
-        u_old[i] = new double[rank_num_points + 2];
-        f[i] = new double[rank_num_points + 2];
+        u[i] = new double[rank_N + 2];
+        u_old[i] = new double[rank_N + 2];
+        f[i] = new double[rank_N + 2];
     }
 
     // For reference, (x_i, y_j) u[i][j] 
     // so that i references columns and j rows
     // Initialize arrays - fill boundaries
-    for (int i = 0; i < num_points + 2; ++i)
+    for (int i = 0; i < N + 2; ++i)
     {
         x = dx * (double) i + a;
-        for (int j = 0; j < rank_num_points + 1; ++j)
+        for (int j = 0; j < rank_N + 2; ++j)
         {
-            y = dy * (double) (j + start_index - 1) + a;
+            y = dy * (double) (j + start_index) + a;
             f[i][j] = -20.0 * sin(x) * cos(3.0 * y);
-            u[i][j] = -20.0;
+            u[i][j] = 1.0;
         }
     }
 
@@ -103,87 +98,96 @@ int main(int argc, char *argv[])
     // Set bottom (rank 0)
     if (rank == 0)
     {
-        for (int i = 0; i < num_points + 2; ++i)
+        for (int i = 0; i < N + 2; ++i)
         {
-            x = (double) i + a;
+            x = dx * (double) i + a;
             u[i][0] = 2.0 * sin(x);
         }
     }
     // Set left and right (all ranks)
-    for (int j = 0; j < rank_num_points + 1; ++j)
+    for (int j = 0; j < rank_N + 2; ++j)
     {   
-        y = dx * (double) j + a;
         u[0][j] = 0.0;
-        u[num_points + 1][j] = 0.0;
+        u[N + 1][j] = 0.0;
     }
     // Set top (rank num_procs - 1)
     if (rank == num_procs - 1)
     {
-        for (int i = 0; i < num_points + 2; ++i)
+        for (int i = 0; i < N + 2; ++i)
         {
-            x = (double) i + a;
-            u[i][num_points + 1] = -2.0 * sin(x);
+            x = dx * (double) i + a;
+            u[i][N + 1] = -2.0 * sin(x);
         }
     }
 
+    // Inital copy into u_old - note that this does not require communication
+    // as we know all values on each process at this point
+    for (int i = 0; i < N + 2; ++i)
+        for (int j = 0; j < rank_N + 2; ++j)
+            u_old[i][j] = u[i][j];
+
     /* Jacobi Iterations */
-    N = 0;
-    while (N < MAX_ITERATIONS)
+    k = 0;
+    while (k < MAX_ITERATIONS)
     {
-        // Copy into old data that we have
-        for (int i = 0; i < num_points + 2; ++i)
-            for (int j = 0; j < rank_num_points + 2; ++j)
-                u_old[i][j] = u[i][j];
-
-        // Communicate data
-        // Send data up (right +) (tag = 1)
-        if (rank < num_procs - 1)
-        {
-            for (int i = 0; i < num_points + 2; ++i)
-                send_buffer[i] = u_old[i][rank_num_points];
-            MPI_Isend(&send_buffer, num_points + 2, MPI_DOUBLE_PRECISION, rank + 1, 1, MPI_COMM_WORLD, &request);
-        }
-        // Send data down (left -) (tag = 2)
-        if (rank > 0)
-        {
-            for (int i = 0; i < num_points + 2; ++i)
-                buffer[i] = u_old[i][1];
-            MPI_Isend(&send_buffer, num_points + 2, MPI_DOUBLE_PRECISION, rank - 1, 2, MPI_COMM_WORLD, &request);
-        }
-
-        // Receive data from above (left -) (tag = 2)
-        if (rank < num_procs - 1)
-        {
-            // MPI_Recv(&buffer, num_points + 2, MPI_DOUBLE_PRECISION, rank + 1, 2, MPI_COMM_WORLD, &status);
-            for (int i = 0; i < num_points + 2; ++i)
-                u_old[i][rank_num_points + 1] = buffer[i];
-        }
-        // Receive data from below (right + ) (tag = 1)
-        if (rank > 0)
-        {
-            // MPI_Recv(&buffer, num_points + 2, MPI_DOUBLE_PRECISION, rank - 1, 1, MPI_COMM_WORLD, &status);
-            for (int i = 0; i < num_points + 2; ++i)
-                u_old[i][0] = buffer[i];
-        }
+        k++;
 
         du_max_proc = 0.0;
-        for (int i = 1; i < num_points + 1; ++i)
-            for (int j = 1; j < rank_num_points + 1; ++j)
+        for (int i = 1; i < N + 1; ++i)
+        {
+            for (int j = 1; j < rank_N + 1; ++j)
             {
                 u[i][j] = 0.25 * (u_old[i-1][j] + u_old[i+1][j] + u_old[i][j-1] + u_old[i][j+1] - pow(dx, 2) * f[i][j]);
                 du_max_proc = fmax(du_max_proc, fabs(u[i][j] - u_old[i][j]));
             }
+        }
 
         // Final global max change in solution
         MPI_Allreduce(&du_max_proc, &du_max, 1, MPI_DOUBLE_PRECISION, MPI_MAX, MPI_COMM_WORLD);
 
         if (rank == 0)
             if (N%PRINT_INTERVAL == 0)
-                cout << "After %d iterations, du_max = %f\n", N, du_max);
+                cout << "After " << k << " iterations, du_max = " << du_max << "\n";
 
         if (du_max < tolerance)
             break;
-        N++;
+
+        // Copy into old data that we have
+        for (int i = 1; i < N + 1; ++i)
+            for (int j = 1; j < rank_N + 1; ++j)
+                u_old[i][j] = u[i][j];
+
+        // Communicate data
+        // Send data up (tag = 1)
+        if (rank < num_procs - 1)
+        {
+            for (int i = 1; i < N + 1; ++i)
+                send_buffer[i - 1] = u_old[i][rank_N];
+            MPI_Isend(send_buffer, N, MPI_DOUBLE_PRECISION, rank + 1, 1, MPI_COMM_WORLD, &request);
+        }
+        // Send data down (tag = 2)
+        if (rank > 0)
+        {
+            for (int i = 1; i < N + 1; ++i)
+                send_buffer[i - 1] = u_old[i][1];
+            MPI_Isend(send_buffer, N, MPI_DOUBLE_PRECISION, rank - 1, 2, MPI_COMM_WORLD, &request);
+        }
+
+        // Receive data from above (tag = 2)
+        if (rank < num_procs - 1)
+        {
+            MPI_Recv(recv_buffer, N, MPI_DOUBLE_PRECISION, rank + 1, 2, MPI_COMM_WORLD, &status);
+            for (int i = 1; i < N + 1; ++i)
+                u_old[i][rank_N + 1] = recv_buffer[i - 1];
+        }
+
+        // Receive data from below (tag = 1)
+        if (rank > 0)
+        {
+            MPI_Recv(recv_buffer, N + 2, MPI_DOUBLE_PRECISION, rank - 1, 1, MPI_COMM_WORLD, &status);
+            for (int i = 1; i < N + 1; ++i)
+                u_old[i][0] = recv_buffer[i - 1];
+        }
     }
 
     // Output Results
@@ -208,19 +212,16 @@ int main(int argc, char *argv[])
     ofstream fp(file_name);
 
     if (rank == 0)
-        fp << 0.0 << " " << u[0] << "\n";
-
-    if (rank == 0)
     {
         // Write out bottom boundary
-        for (int i = 0; i < num_points + 2; ++i)
+        for (int i = 0; i < N + 2; ++i)
             fp << u[i][0] << " ";
         fp << "\n";
     }
 
-    for (int j = 1; j < rank_num_points + 1; ++j)
+    for (int j = 1; j < rank_N + 1; ++j)
     {
-        for (int i = 0; i < num_points + 2; ++i)
+        for (int i = 0; i < N + 2; ++i)
             fp << u[i][j] << " ";
         fp << "\n";
     }
@@ -228,8 +229,8 @@ int main(int argc, char *argv[])
     if (rank == num_procs - 1)
     {
         // Write out top boundary
-        for (int i = 0; i < num_points + 2; ++i)
-            fp << u[i][num_points + 1] << " ";
+        for (int i = 0; i < N + 2; ++i)
+            fp << u[i][N + 1] << " ";
     }
 
     fp.close();
