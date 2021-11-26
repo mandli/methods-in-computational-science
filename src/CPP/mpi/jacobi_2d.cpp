@@ -104,20 +104,20 @@ int main(int argc, char *argv[])
             u[i][0] = 2.0 * sin(x);
         }
     }
-    // Set left and right (all ranks)
-    for (int j = 0; j < rank_N + 2; ++j)
-    {   
-        u[0][j] = 0.0;
-        u[N + 1][j] = 0.0;
-    }
     // Set top (rank num_procs - 1)
     if (rank == num_procs - 1)
     {
         for (int i = 0; i < N + 2; ++i)
         {
             x = dx * (double) i + a;
-            u[i][N + 1] = -2.0 * sin(x);
+            u[i][rank_N + 1] = -2.0 * sin(x);
         }
+    }
+    // Set left and right (all ranks)
+    for (int j = 0; j < rank_N + 2; ++j)
+    {   
+        u[0][j] = 0.0;
+        u[N + 1][j] = 0.0;
     }
 
     // Inital copy into u_old - note that this does not require communication
@@ -230,7 +230,7 @@ int main(int argc, char *argv[])
     {
         // Write out top boundary
         for (int i = 0; i < N + 2; ++i)
-            fp << u[i][N + 1] << " ";
+            fp << u[i][rank_N + 1] << " ";
     }
 
     fp.close();
