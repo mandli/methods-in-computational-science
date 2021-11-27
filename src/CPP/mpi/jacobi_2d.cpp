@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
         // Receive data from below (tag = 1)
         if (rank > 0)
         {
-            MPI_Recv(recv_buffer, N + 2, MPI_DOUBLE_PRECISION, rank - 1, 1, MPI_COMM_WORLD, &status);
+            MPI_Recv(recv_buffer, N, MPI_DOUBLE_PRECISION, rank - 1, 1, MPI_COMM_WORLD, &status);
             for (int i = 1; i < N + 1; ++i)
                 u_old[i][0] = recv_buffer[i - 1];
         }
